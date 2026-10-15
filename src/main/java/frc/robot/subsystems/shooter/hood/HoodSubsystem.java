@@ -1,0 +1,231 @@
+package frc.robot.subsystems.shooter.hood;
+
+import static edu.wpi.first.units.Units.Degrees;
+import static edu.wpi.first.units.Units.Rotations;
+import static edu.wpi.first.units.Units.Volts;
+
+import com.ctre.phoenix6.configs.CANcoderConfiguration;
+import com.ctre.phoenix6.configs.TalonFXConfiguration;
+import com.ctre.phoenix6.controls.PositionVoltage;
+import com.ctre.phoenix6.hardware.CANcoder;
+import com.ctre.phoenix6.hardware.TalonFX;
+import com.ctre.phoenix6.signals.SensorDirectionValue;
+import dev.doglog.DogLog;
+import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.networktables.DoubleSubscriber;
+import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Commands;
+import edu.wpi.first.wpilibj2.command.InstantCommand;
+import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
+import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import edu.wpi.first.wpilibj2.command.WaitUntilCommand;
+import frc.robot.subsystems.shooter.ShotCalculator;
+import frc.robot.subsystems.shooter.ShotCalculator.ShotParameters;
+import frc.robot.subsystems.shooter.hood.HoodConstants.HoodState;
+
+public class HoodSubsystem extends SubsystemBase {
+  private final TalonFX hoodMotor;
+  private final CANcoder hoodEncoder;
+
+  private final DoubleSubscriber tuningTarget = DogLog.tunable("Hood/TuningTarget", 0.0);
+
+  // private final TunablePIDF tunablePIDF;
+
+  private Rotation2d position;
+
+  private HoodState hoodState = HoodState.NEUTRAL;
+
+  public HoodSubsystem() {
+    hoodMotor = new TalonFX(HoodConstants.HOOD_MOTOR_ID);
+    hoodEncoder = new CANcoder(HoodConstants.HOOD_ENCODER_ID);
+
+    TalonFXConfiguration cfg = new TalonFXConfiguration();
+
+    cfg.CurrentLimits.StatorCurrentLimitEnable = true;
+    cfg.CurrentLimits.StatorCurrentLimit = 120;
+    cfg.CurrentLimits.SupplyCurrentLimitEnable = true;
+    cfg.CurrentLimits.SupplyCurrentLimit = 40;
+
+    cfg.Feedback.SensorToMechanismRatio = HoodConstants.GEAR_RATIO_MOTOR;
+
+    cfg.Slot0.kP = HoodConstants.kP;
+
+    cfg.Slot0.kS = HoodConstants.kS;
+
+    hoodMotor.getConfigurator().apply(cfg);
+
+    CANcoderConfiguration encoderConfig = new CANcoderConfiguration();
+
+    encoderConfig.MagnetSensor.SensorDirection = SensorDirectionValue.Clockwise_Positive;
+    encoderConfig.MagnetSensor.MagnetOffset = -.262;
+
+    hoodEncoder.getConfigurator().apply(encoderConfig);
+
+    lastEncoderRaw = 0;
+    unwrappedEncoder = 0;
+
+    // tunablePIDF = new TunablePIDF("Hood");
+
+    hoodMotor.setPosition(Rotations.of(0));
+  }
+
+  public void setPosition(Rotation2d position) {
+    hoodMotor.setControl(new PositionVoltage(position.getRotations()));
+  }
+
+  public Command setPositionCommand(Rotation2d position) {
+    return Commands.startEnd(() -> setPosition(position), () -> stop(), this);
+  }
+
+  public Rotation2d getMotorPosition() {
+    if (position != null) {
+      return position;
+    }
+
+    position = Rotation2d.fromRotations(hoodMotor.getPosition().getValueAsDouble());
+    return position;
+  }
+
+  private double lastEncoderRaw = 0.0;
+  private double unwrappedEncoder = 0.0;
+
+  public Rotation2d getEncoderPosition() {
+    double raw = hoodEncoder.getPosition().getValueAsDouble();
+
+    double delta = raw - lastEncoderRaw;
+
+    if (delta > 0.5) { // jumped from 1 -> 0
+      delta -= 1.0;
+    } else if (delta < -0.5) { // jumped from 0 -> 1
+      delta += 1.0;
+    }
+
+    unwrappedEncoder += delta;
+    lastEncoderRaw = raw;
+
+    double rotations = unwrappedEncoder / HoodConstants.GEAR_RATIO_ENCODER;
+
+    return Rotation2d.fromRotations(rotations);
+  }
+
+  public void seedMotorFromAbsolute() {
+    hoodMotor.setPosition(getEncoderPosition().getRotations());
+  }
+
+  public Command applyVoltageCommand(double volts) {
+    return Commands.run(() -> hoodMotor.setVoltage(volts), this).finallyDo(() -> stop());
+  }
+
+  public void setState(HoodState state) {
+    this.hoodState = state;
+  }
+
+  public void log() {
+    DogLog.log("Hood/State", hoodState);
+    DogLog.log("Hood/Position", getMotorPosition().getDegrees(), Degrees);
+    DogLog.log("Hood/Volts", hoodMotor.getMotorVoltage().getValueAsDouble(), Volts);
+  }
+
+  public void stop() {
+    hoodMotor.stopMotor();
+  }
+
+  private double startTime = 0;
+  private boolean zeroing = false;
+
+  // thank you scream
+  public Command zero() {
+    return new SequentialCommandGroup(
+        new InstantCommand(
+            () -> {
+              startTime = Timer.getFPGATimestamp();
+              zeroing = true;
+            }),
+        applyVoltageCommand(-1.0)
+            .withDeadline(
+                new WaitUntilCommand(() -> ((Timer.getFPGATimestamp() - startTime) > 1.0))),
+        new InstantCommand(
+            () -> {
+              hoodMotor.setPosition(Rotations.of(0));
+              zeroing = false;
+            }));
+  }
+
+  // public void updateGains() {
+  //   TunablePIDFGains gains = tunablePIDF.getGains();
+
+  //   if (gains.hasChanged()) {
+  //     Slot0Configs slot0Configs = new Slot0Configs();
+  //     slot0Configs.kP = gains.kP();
+  //     slot0Configs.kD = gains.kD();
+  //     slot0Configs.kS = gains.kS();
+
+  //     slot0Configs.StaticFeedforwardSign = StaticFeedforwardSignValue.UseClosedLoopSign;
+
+  //     hoodMotor.getConfigurator().apply(slot0Configs);
+  //     return;
+  //   }
+  // }
+
+  @Override
+  public void periodic() {
+    log();
+    // updateGains();
+
+    if (zeroing) return;
+
+    // if (tuningTarget.get() != 0) {
+    //   setPosition(Rotation2d.fromDegrees(tuningTarget.get()));
+    // } else {
+    //   stop();
+    // }
+
+    switch (hoodState) {
+      case PASSING:
+        ShotParameters passingParams = ShotCalculator.getInstance().calculateParameters();
+
+        if (!passingParams.isValid()) {
+          idle();
+        } else {
+          setPosition(passingParams.hoodAngle());
+        }
+        break;
+      case SCORING:
+        ShotParameters scoringParams = ShotCalculator.getInstance().calculateParameters();
+
+        if (!scoringParams.isValid()) {
+          idle();
+        } else {
+          setPosition(scoringParams.hoodAngle());
+        }
+        break;
+      case NEUTRAL:
+        setPosition(Rotation2d.kZero);
+        break;
+      default:
+        break;
+    }
+  }
+
+  public void clearCache() {
+    position = null;
+  }
+
+  private Rotation2d simPos = Rotation2d.kZero;
+
+  public void setSimPosition(Rotation2d pos) {
+    this.simPos = pos;
+  }
+
+  public Rotation2d getSimPos() {
+    return this.simPos;
+  }
+
+  @Override
+  public void simulationPeriodic() {
+    ShotParameters params = ShotCalculator.getInstance().calculateParameters();
+
+    setSimPosition(params.hoodAngle());
+  }
+}
