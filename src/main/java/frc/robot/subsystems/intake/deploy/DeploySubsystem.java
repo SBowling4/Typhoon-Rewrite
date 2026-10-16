@@ -17,7 +17,7 @@ import edu.wpi.first.wpilibj.DutyCycleEncoder;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import frc.robot.subsystems.intake.deploy.DeployConstants.DeployState;
+import frc.robot.subsystems.intake.deploy.DeployConstants.DeployGoal;
 
 public class DeploySubsystem extends SubsystemBase {
   private final SparkMax leftMotor;
@@ -27,7 +27,7 @@ public class DeploySubsystem extends SubsystemBase {
   private final PIDController intakePIDController;
   private final ArmFeedforward feedforward;
 
-  private DeployState deployState;
+  private DeployGoal deployState;
 
   private Rotation2d deployTarget;
   private Rotation2d position;
@@ -72,31 +72,31 @@ public class DeploySubsystem extends SubsystemBase {
     feedforward = new ArmFeedforward(DeployConstants.kS, DeployConstants.kG, 0);
 
     if (encoder.get() < .2) {
-      deployState = DeployConstants.DeployState.RETRACT;
+      deployState = DeployConstants.DeployGoal.RETRACT;
       deployTarget = deployState.getPosition();
 
       unwrappedEncoder = 1;
     } else {
-      deployState = DeployConstants.DeployState.DEPLOY;
+      deployState = DeployConstants.DeployGoal.DEPLOY;
       deployTarget = deployState.getPosition();
     }
   }
 
-  public void setState(DeployState state) {
+  public void setGoal(DeployGoal state) {
     this.deployState = state;
     this.deployTarget = state.getPosition();
 
-    if (state == DeployState.AGITATE) {
+    if (state == DeployGoal.AGITATE) {
       agitationState = AgitationState.DOWN; // reset cycle
     }
   }
 
-  public DeployState getState() {
+  public DeployGoal getState() {
     return deployState;
   }
 
-  public Command deployCommand(DeployState state) {
-    return Commands.run(() -> setState(state), this);
+  public Command deployCommand(DeployGoal state) {
+    return Commands.run(() -> setGoal(state), this);
   }
 
   private enum AgitationState {
@@ -107,7 +107,7 @@ public class DeploySubsystem extends SubsystemBase {
   public void agitate() {
     switch (agitationState) {
       case DOWN:
-        setPosition(DeployConstants.DeployState.AGITATE.getPosition());
+        setPosition(DeployConstants.DeployGoal.AGITATE.getPosition());
 
         if (atSetpoint()) {
           agitationState = AgitationState.UP;
@@ -115,7 +115,7 @@ public class DeploySubsystem extends SubsystemBase {
         break;
 
       case UP:
-        setPosition(DeployConstants.DeployState.DEPLOY.getPosition());
+        setPosition(DeployConstants.DeployGoal.DEPLOY.getPosition());
 
         if (atSetpoint()) {
           agitationState = AgitationState.DOWN;
@@ -129,15 +129,15 @@ public class DeploySubsystem extends SubsystemBase {
 
   public Command agitateCommand() {
     return Commands.sequence(
-            Commands.runOnce(() -> setState(DeployConstants.DeployState.AGITATE), this),
+            Commands.runOnce(() -> setGoal(DeployConstants.DeployGoal.AGITATE), this),
             Commands.waitUntil(this::atSetpoint),
-            Commands.runOnce(() -> setState(DeployConstants.DeployState.DEPLOY), this),
+            Commands.runOnce(() -> setGoal(DeployConstants.DeployGoal.DEPLOY), this),
             Commands.waitUntil(this::atSetpoint))
         .finallyDo(interrupted -> stopDeploy());
   }
 
-  public Command delpoyCommandNoRequirements(DeployState state) {
-    return Commands.runOnce(() -> setState(state));
+  public Command delpoyCommandNoRequirements(DeployGoal state) {
+    return Commands.runOnce(() -> setGoal(state));
   }
 
   public void stopDeploy() {

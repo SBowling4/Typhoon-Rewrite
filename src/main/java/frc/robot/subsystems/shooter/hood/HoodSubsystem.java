@@ -22,7 +22,7 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj2.command.WaitUntilCommand;
 import frc.robot.subsystems.shooter.ShotCalculator;
 import frc.robot.subsystems.shooter.ShotCalculator.ShotParameters;
-import frc.robot.subsystems.shooter.hood.HoodConstants.HoodState;
+import frc.robot.subsystems.shooter.hood.HoodConstants.HoodGoal;
 
 public class HoodSubsystem extends SubsystemBase {
   private final TalonFX hoodMotor;
@@ -34,7 +34,7 @@ public class HoodSubsystem extends SubsystemBase {
 
   private Rotation2d position;
 
-  private HoodState hoodState = HoodState.NEUTRAL;
+  private HoodGoal hoodState = HoodGoal.NEUTRAL;
 
   public HoodSubsystem() {
     hoodMotor = new TalonFX(HoodConstants.HOOD_MOTOR_ID);
@@ -117,7 +117,7 @@ public class HoodSubsystem extends SubsystemBase {
     return Commands.run(() -> hoodMotor.setVoltage(volts), this).finallyDo(() -> stop());
   }
 
-  public void setState(HoodState state) {
+  public void setGoal(HoodGoal state) {
     this.hoodState = state;
   }
 

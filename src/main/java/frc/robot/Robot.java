@@ -57,7 +57,6 @@ public class Robot extends TimedRobot {
     RobotContainer.getLeftVision().clearCache();
     RobotContainer.getRightVision().clearCache();
 
-    RobotState.getInstance().periodic();
     CommandScheduler.getInstance().run();
 
     Mechanism3d.getInstance().log();

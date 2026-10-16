@@ -9,7 +9,7 @@ public class RollerConstants {
 
   public static final double MAX_VELOCITY = 6000;
 
-  public enum RollerState {
+  public enum RollerGoal {
     INTAKE(-5000),
     AUTO_INTAKE(-5000),
     OUT(MAX_VELOCITY),
@@ -18,7 +18,7 @@ public class RollerConstants {
 
     private double velocity;
 
-    private RollerState(double velocity) {
+    private RollerGoal(double velocity) {
       this.velocity = velocity;
     }
 

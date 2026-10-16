@@ -15,13 +15,12 @@ import edu.wpi.first.wpilibj.PowerDistribution.ModuleType;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandPS5Controller;
-import frc.robot.RobotState.RobotStates;
 import frc.robot.auto.AutoSelector;
+import frc.robot.state.inputs.ControllerBindings;
 import frc.robot.subsystems.drive.CommandSwerveDrivetrain;
 import frc.robot.subsystems.drive.TunerConstants;
 import frc.robot.subsystems.indexer.kicker.KickerSubsystem;
 import frc.robot.subsystems.indexer.spindexer.SpindexerSubsystem;
-import frc.robot.subsystems.intake.deploy.DeployConstants.DeployState;
 import frc.robot.subsystems.intake.deploy.DeploySubsystem;
 import frc.robot.subsystems.intake.roller.RollerSubsystem;
 import frc.robot.subsystems.shooter.flywheel.FlywheelSubsystem;
@@ -29,7 +28,6 @@ import frc.robot.subsystems.shooter.hood.HoodSubsystem;
 import frc.robot.subsystems.shooter.turret.TurretSubsystem;
 import frc.robot.subsystems.vision.Vision;
 import frc.robot.subsystems.vision.VisionConstants;
-import frc.robot.util.field.Region;
 
 @SuppressWarnings("unused")
 public class RobotContainer {
@@ -66,8 +64,6 @@ public class RobotContainer {
   private static final FlywheelSubsystem flywheelSubsystem = new FlywheelSubsystem();
   private static final HoodSubsystem hoodSubsystem = new HoodSubsystem();
 
-  // private static final LEDSubsystem ledSubsystem = new LEDSubsystem();
-
   // Intake Subystems
   private static final DeploySubsystem deploySubsystem = new DeploySubsystem();
   private static final RollerSubsystem rollerSubsystem = new RollerSubsystem();
@@ -76,25 +72,19 @@ public class RobotContainer {
   private static final SpindexerSubsystem spindexerSubsystem = new SpindexerSubsystem();
   private static final KickerSubsystem kickerSubsystem = new KickerSubsystem();
 
-  public boolean manualTurret = false;
-  public boolean killManual = true;
-
   private final AutoSelector autoSelector = new AutoSelector();
 
   public RobotContainer() {
     configureBindings();
     configureDogLog();
+
+    ControllerBindings.bindAll(driverController);
   }
 
   private void configureBindings() {
-
     drivetrain.setDefaultCommand(
         drivetrain.applyRequest(
             () -> {
-              if (RobotState.getInstance().getState() == RobotStates.SCORING_WITH_AGITATION) {
-                return brake;
-              }
-
               return drive
                   .withVelocityX(-driverController.getLeftY() * MaxSpeed * 0.5)
                   .withVelocityY(-driverController.getLeftX() * MaxSpeed * 0.5)
@@ -111,106 +101,9 @@ public class RobotContainer {
                         .withVelocityY(-driverController.getLeftX() * MaxSpeed)
                         .withRotationalRate(-driverController.getRightX() * MaxAngularRate)));
 
-    // Run SysId routines when holding back/start and X/Y.
-    // Note that each routine should be run exactly once in a single log.
-    // driverXbox.back().and(driverXbox.y()).whileTrue(drivetrain.sysIdDynamic(Direction.kForward));
-    // driverXbox.back().and(driverXbox.x()).whileTrue(drivetrain.sysIdDynamic(Direction.kReverse));
-    // driverXbox
-    //     .start()
-    //     .and(driverXbox.y())
-    //     .whileTrue(drivetrain.sysIdQuasistatic(Direction.kForward));
-    // driverXbox
-    //     .start()
-    //     .and(driverXbox.x())
-    //     .whileTrue(drivetrain.sysIdQuasistatic(Direction.kReverse));
-
-    driverController
-        .R1()
-        .onTrue(
-            Commands.runOnce(
-                () -> {
-                  RobotState robotState = RobotState.getInstance();
-                  switch (RobotState.getInstance().getState()) {
-                    case NEUTRAL:
-                      robotState.setState(RobotStates.INTAKING);
-                      break;
-                    default:
-                      robotState.setState(RobotStates.NEUTRAL);
-                      break;
-                  }
-                }));
-
-    driverController
-        .R2()
-        .whileTrue(
-            Commands.runOnce(
-                () -> {
-                  Region botRegion =
-                      Region.getRegion(drivetrain.getPose()).orElse(Region.BLUE_ALLIANCE_ZONE);
-
-                  if (botRegion == Region.BLUE_ALLIANCE_ZONE
-                      || botRegion == Region.RED_ALLIANCE_ZONE) {
-                    RobotState.getInstance().setState(RobotStates.SCORING_NO_AGITATION);
-                  } else {
-                    RobotState.getInstance().setState(RobotStates.PASSING);
-                  }
-                }));
-
-    driverController
-        .L1()
-        .or(driverController.R2())
-        .onFalse(
-            Commands.runOnce(
-                () -> {
-                  RobotStates previousState = RobotState.getInstance().getPreviousState();
-
-                  if (previousState == RobotStates.REVERSE_INDEXER
-                      || previousState == RobotStates.SCORING_NO_AGITATION
-                      || previousState == RobotStates.SCORING_WITH_AGITATION) {
-                    RobotState.getInstance()
-                        .setState(
-                            deploySubsystem.getState() == DeployState.DEPLOY
-                                ? RobotStates.INTAKING
-                                : RobotStates.NEUTRAL);
-                    return;
-                  }
-
-                  RobotState.getInstance().setState(previousState);
-                }));
-
-    driverController
-        .L1()
-        .onTrue(RobotState.getInstance().setStateCommand(RobotStates.SCORING_WITH_AGITATION));
-
-    driverController
-        .cross()
-        .onTrue(RobotState.getInstance().setStateCommand(RobotStates.REVERSE_INDEXER));
-
     driverController.povDown().onTrue(hoodSubsystem.zero());
 
-    // reset the field-centric heading on left bumper press
     driverController.options().onTrue(drivetrain.runOnce(() -> drivetrain.seedFieldCentric()));
-    // driverController
-    //     .L3()
-    //     .onTrue(
-    //         Commands.runOnce(
-    //             () ->
-    //                 drivetrain.resetPose(
-    //                     new Pose2d(
-    //                         Inches.of(27 / 2).in(Meters),
-    //                         Inches.of(27 / 2).in(Meters),
-    //                         Rotation2d.kZero))));
-
-    operatorController
-        .R3()
-        .onTrue(
-            Commands.run(
-                    () -> {
-                      turretSubsystem.set(operatorController.getRightX() / 10);
-                    },
-                    turretSubsystem)
-                .until(() -> operatorController.circle().getAsBoolean())
-                .andThen(Commands.runOnce(() -> turretSubsystem.seedMotorFromAbsolute())));
   }
 
   /** Configure DogLog options and PowerDistribution */

@@ -1,30 +1,30 @@
 package frc.robot.subsystems.intake;
 
 import frc.robot.subsystems.intake.deploy.DeployConstants;
-import frc.robot.subsystems.intake.deploy.DeployConstants.DeployState;
+import frc.robot.subsystems.intake.deploy.DeployConstants.DeployGoal;
 import frc.robot.subsystems.intake.roller.RollerConstants;
-import frc.robot.subsystems.intake.roller.RollerConstants.RollerState;
+import frc.robot.subsystems.intake.roller.RollerConstants.RollerGoal;
 
 // I'm like 90% sure this doesn't do anthing but I'm scared to delete it so here we are
 public enum IntakeStates {
-  INTAKE(RollerConstants.RollerState.INTAKE, DeployConstants.DeployState.DEPLOY),
-  OUT(RollerConstants.RollerState.OUT, DeployConstants.DeployState.DEPLOY),
-  STOP(RollerConstants.RollerState.STOP, DeployConstants.DeployState.RETRACT),
-  AGITATE(RollerConstants.RollerState.STOP, DeployConstants.DeployState.AGITATE);
+  INTAKE(RollerConstants.RollerGoal.INTAKE, DeployConstants.DeployGoal.DEPLOY),
+  OUT(RollerConstants.RollerGoal.OUT, DeployConstants.DeployGoal.DEPLOY),
+  STOP(RollerConstants.RollerGoal.STOP, DeployConstants.DeployGoal.RETRACT),
+  AGITATE(RollerConstants.RollerGoal.STOP, DeployConstants.DeployGoal.AGITATE);
 
-  private RollerState rollerState;
-  private DeployState deployState;
+  private RollerGoal rollerState;
+  private DeployGoal deployState;
 
-  private IntakeStates(RollerState rollerState, DeployState deployState) {
+  private IntakeStates(RollerGoal rollerState, DeployGoal deployState) {
     this.rollerState = rollerState;
     this.deployState = deployState;
   }
 
-  public DeployState getDeployState() {
+  public DeployGoal getDeployState() {
     return this.deployState;
   }
 
-  public RollerState getRollerState() {
+  public RollerGoal getRollerState() {
     return this.rollerState;
   }
 }

@@ -13,14 +13,14 @@ import edu.wpi.first.networktables.DoubleSubscriber;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import frc.robot.RobotState;
-import frc.robot.subsystems.intake.roller.RollerConstants.RollerState;
+import frc.robot.state.StateMachine;
+import frc.robot.subsystems.intake.roller.RollerConstants.RollerGoal;
 
 public class RollerSubsystem extends SubsystemBase {
   private final SparkMax rollerMotor;
   private SparkClosedLoopController rollerController;
 
-  private RollerState rollerState = RollerState.STOP;
+  private RollerGoal rollerState = RollerGoal.STOP;
 
   // private DoubleSubscriber kP = DogLog.tunable("Intake/Roller/kP", 0.0);
   // private DoubleSubscriber kS = DogLog.tunable("Intake/Roller/kS", 0.1);
@@ -50,15 +50,15 @@ public class RollerSubsystem extends SubsystemBase {
 
     rollerController = rollerMotor.getClosedLoopController();
 
-    rollerState = RollerConstants.RollerState.STOP;
+    rollerState = RollerConstants.RollerGoal.STOP;
   }
 
-  public void setState(RollerState state) {
+  public void setGoal(RollerGoal state) {
     this.rollerState = state;
   }
 
-  public Command rollerCommand(RollerState state) {
-    return Commands.run(() -> setState(state), this).finallyDo(() -> stop());
+  public Command rollerCommand(RollerGoal state) {
+    return Commands.run(() -> setGoal(state), this).finallyDo(() -> stop());
   }
 
   public void stop() {
@@ -98,8 +98,8 @@ public class RollerSubsystem extends SubsystemBase {
         rollerMotor.stopMotor();
         break;
       case SHOOTING:
-        if (RobotState.getInstance().isShooterReady) {
-          rollerController.setSetpoint(RollerState.INTAKE.getVelocity(), ControlType.kVelocity);
+        if (StateMachine.getInstance().shooterReady()) {
+          rollerController.setSetpoint(RollerGoal.INTAKE.getVelocity(), ControlType.kVelocity);
         } else {
           rollerMotor.stopMotor();
         }

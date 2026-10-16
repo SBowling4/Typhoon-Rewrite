@@ -15,8 +15,8 @@ import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import frc.robot.RobotState;
-import frc.robot.subsystems.indexer.spindexer.SpindexerConstants.SpindexerState;
+import frc.robot.state.StateMachine;
+import frc.robot.subsystems.indexer.spindexer.SpindexerConstants.SpindexerGoal;
 import frc.robot.util.TunablePIDF;
 import frc.robot.util.TunablePIDF.TunablePIDFGains;
 
@@ -24,7 +24,7 @@ public class SpindexerSubsystem extends SubsystemBase {
   private final SparkMax spinMotor;
   private SparkClosedLoopController controller;
 
-  private SpindexerState spindexerState = SpindexerState.STOP;
+  private SpindexerGoal spindexerState = SpindexerGoal.STOP;
 
   private final BooleanSubscriber tuningMode = DogLog.tunable("Spindexer/Tuning Mode", false);
   private final DoubleSubscriber tuningTarget = DogLog.tunable("Spindexer/Tuning Target", 0.0);
@@ -56,23 +56,23 @@ public class SpindexerSubsystem extends SubsystemBase {
 
     controller = spinMotor.getClosedLoopController();
 
-    spindexerState = SpindexerState.STOP;
+    spindexerState = SpindexerGoal.STOP;
 
     tunablePIDF = new TunablePIDF("Spindexer");
   }
 
-  public void setSpindexerState(SpindexerState state) {
+  public void setGoal(SpindexerGoal state) {
     this.spindexerState = state;
   }
 
-  public Command spinCommand(SpindexerState state) {
-    return Commands.startEnd(() -> setSpindexerState(state), () -> stop(), this);
+  public Command spinCommand(SpindexerGoal state) {
+    return Commands.startEnd(() -> setGoal(state), () -> stop(), this);
   }
 
   public boolean isJammed() {
     if (Timer.getFPGATimestamp() - startSpinUpTime < SpindexerConstants.SPINUP_TIME) return false;
-    if (spindexerState == SpindexerState.STOP || spindexerState == SpindexerState.OUT) return false;
-    if (!RobotState.getInstance().isShooterReady) return false;
+    if (spindexerState == SpindexerGoal.STOP || spindexerState == SpindexerGoal.OUT) return false;
+    if (!StateMachine.getInstance().shooterReady()) return false;
 
     return spinMotor.getOutputCurrent() > 38.0;
   }
@@ -115,7 +115,7 @@ public class SpindexerSubsystem extends SubsystemBase {
 
     switch (spindexerState) {
       case SHOOTING:
-        if (RobotState.getInstance().isShooterReady) {
+        if (StateMachine.getInstance().shooterReady()) {
           if (!wasShooting) {
             startSpinUpTime = Timer.getFPGATimestamp();
             wasShooting = true;

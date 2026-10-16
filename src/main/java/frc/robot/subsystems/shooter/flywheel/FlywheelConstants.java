@@ -18,7 +18,7 @@ public class FlywheelConstants {
   public static final double backkS = frontkS;
   public static final double backkV = 0.112;
 
-  public enum FlywheelState {
+  public enum FlywheelGoal {
     IDLE,
     SCORING,
     PASSING

@@ -11,7 +11,7 @@ public class KickerConstants {
 
   public static final Current JAM_CURRENT = Amp.of(38.5);
 
-  public enum KickerState {
+  public enum KickerGoal {
     IN(1),
     OUT(-1),
     STOP(0),
@@ -19,7 +19,7 @@ public class KickerConstants {
 
     private final double power;
 
-    private KickerState(double power) {
+    private KickerGoal(double power) {
       this.power = power;
     }
 

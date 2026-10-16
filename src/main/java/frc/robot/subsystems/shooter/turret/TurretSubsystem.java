@@ -1,7 +1,6 @@
 package frc.robot.subsystems.shooter.turret;
 
 import static edu.wpi.first.units.Units.Degrees;
-import static edu.wpi.first.units.Units.Radians;
 import static edu.wpi.first.units.Units.Rotations;
 import static edu.wpi.first.units.Units.RotationsPerSecond;
 import static edu.wpi.first.units.Units.Volts;
@@ -174,7 +173,7 @@ public class TurretSubsystem extends SubsystemBase {
       return encoderPosition;
     }
     double turretRot = -(unwrappedEncoder - TurretConstants.ENCODER_OFFSET);
-    encoderPosition = Rotation2d.fromRadians(Rotations.of(turretRot).in(Radians));
+    encoderPosition = Rotation2d.fromRotations(turretRot);
     return encoderPosition;
   }
 

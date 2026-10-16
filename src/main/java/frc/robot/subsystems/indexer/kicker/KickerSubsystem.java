@@ -13,8 +13,8 @@ import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
-import frc.robot.RobotState;
-import frc.robot.subsystems.indexer.kicker.KickerConstants.KickerState;
+import frc.robot.state.StateMachine;
+import frc.robot.subsystems.indexer.kicker.KickerConstants.KickerGoal;
 
 public class KickerSubsystem extends SubsystemBase {
   private final TalonFX kickerMotor;
@@ -24,7 +24,7 @@ public class KickerSubsystem extends SubsystemBase {
   private final BooleanSubscriber tuningMode = DogLog.tunable("Kicker/Tuning Mode", false);
   private boolean isTuning = false;
 
-  private KickerState state = KickerState.STOP;
+  private KickerGoal state = KickerGoal.STOP;
 
   private double startSpinUpTime = 0;
   private boolean wasShooting = false;
@@ -46,12 +46,12 @@ public class KickerSubsystem extends SubsystemBase {
     kickerMotor.getConfigurator().apply(cfg);
   }
 
-  public void setState(KickerState state) {
+  public void setGoal(KickerGoal state) {
     this.state = state;
   }
 
-  public Command kickCommand(KickerState state) {
-    return Commands.startEnd(() -> setState(state), () -> stop(), this);
+  public Command kickCommand(KickerGoal state) {
+    return Commands.startEnd(() -> setGoal(state), () -> stop(), this);
   }
 
   public boolean isJammed() {
@@ -61,10 +61,10 @@ public class KickerSubsystem extends SubsystemBase {
     if (currentTime - startSpinUpTime < KickerConstants.SPINUP_TIME) return false;
 
     // Ignore states where we shouldn't be moving forward
-    if (state == KickerState.STOP || state == KickerState.OUT) return false;
+    if (state == KickerGoal.STOP || state == KickerGoal.OUT) return false;
 
     // Only care when shooter is ready (same as spindexer)
-    if (!RobotState.getInstance().isShooterReady) return false;
+    if (!StateMachine.getInstance().shooterReady()) return false;
 
     return kickerMotor.getStatorCurrent().getValueAsDouble() > KickerConstants.JAM_CURRENT.in(Amps);
   }
@@ -106,12 +106,12 @@ public class KickerSubsystem extends SubsystemBase {
 
     switch (state) {
       case SHOOTING:
-        if (RobotState.getInstance().isShooterReady) {
+        if (StateMachine.getInstance().shooterReady()) {
           if (!wasShooting) {
             startSpinUpTime = Timer.getFPGATimestamp();
             wasShooting = true;
           }
-          kickerMotor.set(KickerState.IN.getPower());
+          kickerMotor.set(KickerGoal.IN.getPower());
         } else {
           kickerMotor.stopMotor();
           wasShooting = false;

@@ -9,7 +9,7 @@ public class SpindexerConstants {
 
   public static final double SPINUP_TIME = .5;
 
-  public enum SpindexerState {
+  public enum SpindexerGoal {
     IN(.3),
     OUT(-.6),
     STOP(0),
@@ -17,7 +17,7 @@ public class SpindexerConstants {
 
     private final double power;
 
-    private SpindexerState(double power) {
+    private SpindexerGoal(double power) {
       this.power = power;
     }
 

@@ -8,8 +8,9 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SequentialCommandGroup;
 import frc.robot.RobotContainer;
-import frc.robot.RobotState;
-import frc.robot.RobotState.RobotStates;
+import frc.robot.state.StateMachine;
+import frc.robot.state.standard.Intake;
+import frc.robot.state.standard.Score;
 import frc.robot.util.geometry.AllianceFlipUtil;
 
 public abstract class BaseAuto extends SequentialCommandGroup {
@@ -26,10 +27,10 @@ public abstract class BaseAuto extends SequentialCommandGroup {
   }
 
   protected static Command shootSequence(double seconds) {
-    return RobotState.getInstance()
-        .setStateCommand(RobotStates.SCORING_WITH_AGITATION)
+    return StateMachine.getInstance()
+        .setStateCommand(new Score())
         .andThen(Commands.waitSeconds(seconds))
-        .andThen(RobotState.getInstance().setStateCommand(RobotStates.INTAKING));
+        .andThen(StateMachine.getInstance().setStateCommand(new Intake()));
   }
 
   protected static Command shootSequence(Time time) {

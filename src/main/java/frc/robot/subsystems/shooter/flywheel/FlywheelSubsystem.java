@@ -17,7 +17,7 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.robot.subsystems.shooter.ShotCalculator;
 import frc.robot.subsystems.shooter.ShotCalculator.ShotParameters;
-import frc.robot.subsystems.shooter.flywheel.FlywheelConstants.FlywheelState;
+import frc.robot.subsystems.shooter.flywheel.FlywheelConstants.FlywheelGoal;
 
 public class FlywheelSubsystem extends SubsystemBase {
   private final TalonFX rightMotor;
@@ -31,7 +31,7 @@ public class FlywheelSubsystem extends SubsystemBase {
   private AngularVelocity frontTargetVelocity = RotationsPerSecond.of(0);
   private AngularVelocity backTargetVelocity = RotationsPerSecond.of(0);
 
-  private FlywheelState flywheelState = FlywheelState.IDLE;
+  private FlywheelGoal flywheelState = FlywheelGoal.IDLE;
 
   public FlywheelSubsystem() {
     rightMotor = new TalonFX(FlywheelConstants.RIGHT_FLYWHEEL_ID);
@@ -93,13 +93,13 @@ public class FlywheelSubsystem extends SubsystemBase {
         this);
   }
 
-  public void setState(FlywheelState state) {
+  public void setGoal(FlywheelGoal state) {
     this.flywheelState = state;
   }
 
   public void setVelocity(AngularVelocity velocity) {
     frontTargetVelocity = velocity;
-    backTargetVelocity = velocity.times(.95); // TODO: Add the times back
+    backTargetVelocity = velocity.times(.95);
 
     rightMotor.setControl(new VelocityVoltage(frontTargetVelocity));
     leftMotor.setControl(new VelocityVoltage(backTargetVelocity));
@@ -115,7 +115,7 @@ public class FlywheelSubsystem extends SubsystemBase {
     return Math.abs(
             rightMotor.getVelocity().getValueAsDouble()
                 - frontTargetVelocity.in(RotationsPerSecond))
-        < 2; // TODO: Tune this threshold
+        < 2;
   }
 
   public void stop() {
