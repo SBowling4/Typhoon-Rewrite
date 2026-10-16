@@ -1,7 +1,7 @@
 package frc.robot.state.override;
 
+import frc.robot.state.InputEvent;
 import frc.robot.state.State;
-import frc.robot.state.inputs.InputEvent;
 import frc.robot.subsystems.indexer.kicker.KickerConstants.KickerGoal;
 import frc.robot.subsystems.indexer.spindexer.SpindexerConstants.SpindexerGoal;
 

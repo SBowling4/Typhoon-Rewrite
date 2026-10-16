@@ -1,7 +1,6 @@
 package frc.robot.state;
 
 import frc.robot.RobotContainer;
-import frc.robot.state.inputs.InputEvent;
 import frc.robot.subsystems.drive.CommandSwerveDrivetrain;
 import frc.robot.subsystems.indexer.kicker.KickerSubsystem;
 import frc.robot.subsystems.indexer.spindexer.SpindexerSubsystem;

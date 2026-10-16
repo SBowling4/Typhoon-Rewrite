@@ -8,23 +8,29 @@ import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 import dev.doglog.DogLog;
-import edu.wpi.first.networktables.BooleanSubscriber;
+import edu.wpi.first.math.filter.Debouncer;
+import edu.wpi.first.math.filter.Debouncer.DebounceType;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import frc.robot.state.InputEvent;
 import frc.robot.state.StateMachine;
 import frc.robot.subsystems.indexer.kicker.KickerConstants.KickerGoal;
 
 public class KickerSubsystem extends SubsystemBase {
   private final TalonFX kickerMotor;
 
-  // private final TunablePIDF tunablePIDF = new TunablePIDF("kicker");
+  private static final double JAM_DEBOUNCE_SECONDS = 0.1;
+  private static final double UNJAM_SECONDS = 0.15;
+  private static final double UNJAM_COOLDOWN_SECONDS = 0.75;
 
-  private final BooleanSubscriber tuningMode = DogLog.tunable("Kicker/Tuning Mode", false);
-  private boolean isTuning = false;
+  private final Debouncer jamDebouncer = new Debouncer(JAM_DEBOUNCE_SECONDS, DebounceType.kBoth);
+  private boolean unjamming = false;
+  private double unjamStartTime = 0;
+  private double lastUnjamTime = 0;
 
-  private KickerGoal state = KickerGoal.STOP;
+  private KickerGoal goal = KickerGoal.STOP;
 
   private double startSpinUpTime = 0;
   private boolean wasShooting = false;
@@ -46,12 +52,12 @@ public class KickerSubsystem extends SubsystemBase {
     kickerMotor.getConfigurator().apply(cfg);
   }
 
-  public void setGoal(KickerGoal state) {
-    this.state = state;
+  public void setGoal(KickerGoal goal) {
+    this.goal = goal;
   }
 
-  public Command kickCommand(KickerGoal state) {
-    return Commands.startEnd(() -> setGoal(state), () -> stop(), this);
+  public Command kickCommand(KickerGoal goal) {
+    return Commands.startEnd(() -> setGoal(goal), () -> stop(), this);
   }
 
   public boolean isJammed() {
@@ -61,7 +67,7 @@ public class KickerSubsystem extends SubsystemBase {
     if (currentTime - startSpinUpTime < KickerConstants.SPINUP_TIME) return false;
 
     // Ignore states where we shouldn't be moving forward
-    if (state == KickerGoal.STOP || state == KickerGoal.OUT) return false;
+    if (goal == KickerGoal.STOP || goal == KickerGoal.OUT) return false;
 
     // Only care when shooter is ready (same as spindexer)
     if (!StateMachine.getInstance().shooterReady()) return false;
@@ -69,42 +75,45 @@ public class KickerSubsystem extends SubsystemBase {
     return kickerMotor.getStatorCurrent().getValueAsDouble() > KickerConstants.JAM_CURRENT.in(Amps);
   }
 
+    /** Fires JAM_DETECTED / UNJAM_FINISHED into the state machine. Call once per loop. */
+  private void updateUnjam() {
+    double now = Timer.getFPGATimestamp();
+
+    // Must run every loop so the debouncer's timing stays correct.
+    boolean jammed = jamDebouncer.calculate(isJammed());
+
+    if (unjamming) {
+      if (now - unjamStartTime > UNJAM_SECONDS) {
+        unjamming = false;
+        StateMachine.getInstance().applyInput(InputEvent.UNJAM_FINISHED);
+      }
+    } else if (jammed && now - lastUnjamTime > UNJAM_COOLDOWN_SECONDS) {
+      unjamming = true;
+      unjamStartTime = now;
+      lastUnjamTime = now;
+      StateMachine.getInstance().applyInput(InputEvent.JAM_DETECTED);
+    }
+
+    DogLog.log("Spindexer/Unjam Active", unjamming);
+  }
+
   public void stop() {
     kickerMotor.stopMotor();
   }
 
   public void log() {
-    DogLog.log("Kicker/State", state);
+    DogLog.log("Kicker/Goal", goal);
     DogLog.log("Kicker/Velocity", kickerMotor.getVelocity().getValueAsDouble(), RotationsPerSecond);
     DogLog.log("Kicker/Is Jammed", isJammed());
     DogLog.log("Kicker/Current", kickerMotor.getStatorCurrent().getValueAsDouble(), Amps);
   }
 
-  // public void updateGains() {
-  //   TunablePIDFGains gains = tunablePIDF.getGains();
-
-  //   if (!gains.hasChanged()) return;
-
-  //   Slot0Configs cfg = new Slot0Configs();
-
-  //   cfg.kP = gains.kP();
-  //   cfg.kS = gains.kS();
-  //   cfg.kV = gains.kV();
-
-  //   kickerMotor.getConfigurator().apply(cfg);
-  // }
-
   @Override
   public void periodic() {
     log();
+    updateUnjam();
 
-    // if (tuningMode.get()) {
-    //   kickerMotor.set(KickerState.IN.getPower());
-    // } else {
-    //   stop();
-    // }
-
-    switch (state) {
+    switch (goal) {
       case SHOOTING:
         if (StateMachine.getInstance().shooterReady()) {
           if (!wasShooting) {
@@ -121,7 +130,7 @@ public class KickerSubsystem extends SubsystemBase {
         kickerMotor.stopMotor();
         break;
       default:
-        kickerMotor.set(state.getPower());
+        kickerMotor.set(goal.getPower());
         break;
     }
   }

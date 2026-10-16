@@ -1,8 +1,8 @@
 package frc.robot.state.standard;
 
+import frc.robot.state.InputEvent;
 import frc.robot.state.State;
 import frc.robot.state.StateMachine;
-import frc.robot.state.inputs.InputEvent;
 import frc.robot.subsystems.intake.deploy.DeployConstants.DeployGoal;
 import frc.robot.subsystems.intake.roller.RollerConstants.RollerGoal;
 
@@ -15,7 +15,7 @@ public class Intake implements State {
   }
 
   @Override
-  public void exit() {} // should be handled by all other state entry logic
+  public void exit() {} 
 
   @Override
   public State applyInput(InputEvent event) {

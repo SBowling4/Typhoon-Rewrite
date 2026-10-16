@@ -29,7 +29,6 @@ public class Mechanism3d {
   private HoodSubsystem hoodSubsystem = RobotContainer.getHoodSubsystem();
 
   public void log() {
-
     boolean sim = Robot.isSimulation();
 
     Rotation2d hoodAngle = sim ? hoodSubsystem.getSimPos() : hoodSubsystem.getMotorPosition();

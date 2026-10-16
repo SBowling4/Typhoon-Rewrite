@@ -2,37 +2,34 @@ package frc.robot.subsystems.indexer.spindexer;
 
 import com.revrobotics.PersistMode;
 import com.revrobotics.ResetMode;
-import com.revrobotics.spark.SparkClosedLoopController;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.config.ClosedLoopConfig;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import com.revrobotics.spark.config.SparkMaxConfig;
 import dev.doglog.DogLog;
-import edu.wpi.first.networktables.BooleanSubscriber;
-import edu.wpi.first.networktables.DoubleSubscriber;
+import edu.wpi.first.math.filter.Debouncer;
+import edu.wpi.first.math.filter.Debouncer.DebounceType;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import frc.robot.state.InputEvent;
 import frc.robot.state.StateMachine;
 import frc.robot.subsystems.indexer.spindexer.SpindexerConstants.SpindexerGoal;
-import frc.robot.util.TunablePIDF;
-import frc.robot.util.TunablePIDF.TunablePIDFGains;
 
 public class SpindexerSubsystem extends SubsystemBase {
   private final SparkMax spinMotor;
-  private SparkClosedLoopController controller;
+  private SpindexerGoal goal = SpindexerGoal.STOP;
 
-  private SpindexerGoal spindexerState = SpindexerGoal.STOP;
+  private static final double JAM_DEBOUNCE_SECONDS = 0.1;
+  private static final double UNJAM_SECONDS = 0.15;
+  private static final double UNJAM_COOLDOWN_SECONDS = 0.75;
 
-  private final BooleanSubscriber tuningMode = DogLog.tunable("Spindexer/Tuning Mode", false);
-  private final DoubleSubscriber tuningTarget = DogLog.tunable("Spindexer/Tuning Target", 0.0);
-  private boolean isTuning = false;
-
-  private double velocityTarget = 0;
-
-  private final TunablePIDF tunablePIDF;
+  private final Debouncer jamDebouncer = new Debouncer(JAM_DEBOUNCE_SECONDS, DebounceType.kBoth);
+  private boolean unjamming = false;
+  private double unjamStartTime = 0;
+  private double lastUnjamTime = 0;
 
   private double startSpinUpTime;
 
@@ -54,27 +51,45 @@ public class SpindexerSubsystem extends SubsystemBase {
     spinMotor.configure(
         spinMotorConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
-    controller = spinMotor.getClosedLoopController();
-
-    spindexerState = SpindexerGoal.STOP;
-
-    tunablePIDF = new TunablePIDF("Spindexer");
+    goal = SpindexerGoal.STOP;
   }
 
-  public void setGoal(SpindexerGoal state) {
-    this.spindexerState = state;
+  public void setGoal(SpindexerGoal goal) {
+    this.goal = goal;
   }
 
-  public Command spinCommand(SpindexerGoal state) {
-    return Commands.startEnd(() -> setGoal(state), () -> stop(), this);
+  public Command spinCommand(SpindexerGoal goal) {
+    return Commands.startEnd(() -> setGoal(goal), () -> stop(), this);
   }
 
   public boolean isJammed() {
     if (Timer.getFPGATimestamp() - startSpinUpTime < SpindexerConstants.SPINUP_TIME) return false;
-    if (spindexerState == SpindexerGoal.STOP || spindexerState == SpindexerGoal.OUT) return false;
+    if (goal == SpindexerGoal.STOP || goal == SpindexerGoal.OUT) return false;
     if (!StateMachine.getInstance().shooterReady()) return false;
 
     return spinMotor.getOutputCurrent() > 38.0;
+  }
+
+    /** Fires JAM_DETECTED / UNJAM_FINISHED into the state machine. Call once per loop. */
+  private void updateUnjam() {
+    double now = Timer.getFPGATimestamp();
+
+    // Must run every loop so the debouncer's timing stays correct.
+    boolean jammed = jamDebouncer.calculate(isJammed());
+
+    if (unjamming) {
+      if (now - unjamStartTime > UNJAM_SECONDS) {
+        unjamming = false;
+        StateMachine.getInstance().applyInput(InputEvent.UNJAM_FINISHED);
+      }
+    } else if (jammed && now - lastUnjamTime > UNJAM_COOLDOWN_SECONDS) {
+      unjamming = true;
+      unjamStartTime = now;
+      lastUnjamTime = now;
+      StateMachine.getInstance().applyInput(InputEvent.JAM_DETECTED);
+    }
+
+    DogLog.log("Spindexer/Unjam Active", unjamming);
   }
 
   public void stop() {
@@ -82,46 +97,25 @@ public class SpindexerSubsystem extends SubsystemBase {
   }
 
   public void log() {
-    DogLog.log("Spindexer/State", spindexerState);
+    DogLog.log("Spindexer/Goal", goal);
     DogLog.log("Spindexer/Is Jammed", isJammed());
     DogLog.log("Spindexer/Current", spinMotor.getOutputCurrent());
     DogLog.log("Spindexer/Velocity", spinMotor.getEncoder().getVelocity());
   }
 
-  public void updateGains() {
-    TunablePIDFGains gains = tunablePIDF.getGains();
-    if (!gains.hasChanged()) {
-      return;
-    }
-
-    SparkMaxConfig cfg = new SparkMaxConfig();
-    cfg.closedLoop.p(gains.kP()).feedForward.kS(gains.kS()).kV(gains.kV());
-
-    spinMotor.configure(cfg, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-
-    controller = spinMotor.getClosedLoopController();
-  }
-
   @Override
   public void periodic() {
     log();
-    // updateGains();
+    updateUnjam();
 
-    // if (tuningMode.get()) {
-    //   spinMotor.set(SpindexerConstants.SpindexerState.IN.getPower());
-    // } else {
-    //   stop();
-    // }
-
-    switch (spindexerState) {
+    switch (goal) {
       case SHOOTING:
         if (StateMachine.getInstance().shooterReady()) {
           if (!wasShooting) {
             startSpinUpTime = Timer.getFPGATimestamp();
             wasShooting = true;
           }
-          spinMotor.set(spindexerState.getPower());
-          // setVelocity(SpindexerConstants.SpindexerState.IN.getVelocity());
+          spinMotor.set(goal.getPower());
         } else {
           stop();
           wasShooting = false;
@@ -132,7 +126,7 @@ public class SpindexerSubsystem extends SubsystemBase {
         spinMotor.stopMotor();
         break;
       default:
-        spinMotor.set(spindexerState.getPower());
+        spinMotor.set(goal.getPower());
         break;
     }
   }

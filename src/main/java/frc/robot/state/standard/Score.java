@@ -1,8 +1,8 @@
 package frc.robot.state.standard;
 
 import frc.robot.RobotContainer;
+import frc.robot.state.InputEvent;
 import frc.robot.state.State;
-import frc.robot.state.inputs.InputEvent;
 import frc.robot.subsystems.indexer.kicker.KickerConstants.KickerGoal;
 import frc.robot.subsystems.indexer.spindexer.SpindexerConstants.SpindexerGoal;
 import frc.robot.subsystems.intake.deploy.DeployConstants.DeployGoal;
@@ -22,20 +22,13 @@ public class Score implements State {
   }
 
   @Override
-  public void exit() {
-    flywheelSubsystem.setGoal(FlywheelGoal.IDLE);
-    hoodSubsystem.setGoal(HoodGoal.NEUTRAL);
-
-    rollerSubsystem.setGoal(RollerGoal.STOP);
-    spindexerSubsystem.setGoal(SpindexerGoal.STOP);
-    kickerSubsystem.setGoal(KickerGoal.STOP);
-  }
+  public void exit() {}
 
   @Override
   public State applyInput(InputEvent event) {
     switch (event) {
       case R2_RELEASED:
-        return RobotContainer.getDeploySubsystem().getState() == DeployGoal.DEPLOY
+        return RobotContainer.getDeploySubsystem().getGoal() == DeployGoal.DEPLOY
             ? new Intake()
             : new Neutral();
       default:

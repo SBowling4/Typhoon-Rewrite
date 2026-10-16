@@ -23,6 +23,7 @@ import frc.robot.util.field.Region;
 import frc.robot.util.geometry.AllianceFlipUtil;
 import java.util.Optional;
 
+@SuppressWarnings("unused")
 public class ShotCalculator {
   private static ShotCalculator instance;
 

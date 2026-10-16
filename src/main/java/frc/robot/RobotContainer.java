@@ -16,7 +16,8 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandPS5Controller;
 import frc.robot.auto.AutoSelector;
-import frc.robot.state.inputs.ControllerBindings;
+import frc.robot.state.InputEvent;
+import frc.robot.state.StateMachine;
 import frc.robot.subsystems.drive.CommandSwerveDrivetrain;
 import frc.robot.subsystems.drive.TunerConstants;
 import frc.robot.subsystems.indexer.kicker.KickerSubsystem;
@@ -77,8 +78,6 @@ public class RobotContainer {
   public RobotContainer() {
     configureBindings();
     configureDogLog();
-
-    ControllerBindings.bindAll(driverController);
   }
 
   private void configureBindings() {
@@ -100,6 +99,14 @@ public class RobotContainer {
                         .withVelocityX(-driverController.getLeftY() * MaxSpeed)
                         .withVelocityY(-driverController.getLeftX() * MaxSpeed)
                         .withRotationalRate(-driverController.getRightX() * MaxAngularRate)));
+
+    driverController.R2().onTrue(StateMachine.getInstance().applyInputCommand(InputEvent.R2_PRESSED));
+    driverController.R2().onFalse(StateMachine.getInstance().applyInputCommand(InputEvent.R2_RELEASED));
+
+    driverController.L1().onTrue(StateMachine.getInstance().applyInputCommand(InputEvent.L1_PRESSED));
+
+    driverController.cross().onTrue(StateMachine.getInstance().applyInputCommand(InputEvent.CROSS_PRESSED));
+    driverController.cross().onFalse(StateMachine.getInstance().applyInputCommand(InputEvent.CROSS_RELEASED));
 
     driverController.povDown().onTrue(hoodSubsystem.zero());
 

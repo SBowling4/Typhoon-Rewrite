@@ -9,7 +9,6 @@ import com.revrobotics.spark.SparkMax;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import com.revrobotics.spark.config.SparkMaxConfig;
 import dev.doglog.DogLog;
-import edu.wpi.first.networktables.DoubleSubscriber;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
@@ -20,15 +19,7 @@ public class RollerSubsystem extends SubsystemBase {
   private final SparkMax rollerMotor;
   private SparkClosedLoopController rollerController;
 
-  private RollerGoal rollerState = RollerGoal.STOP;
-
-  // private DoubleSubscriber kP = DogLog.tunable("Intake/Roller/kP", 0.0);
-  // private DoubleSubscriber kS = DogLog.tunable("Intake/Roller/kS", 0.1);
-  // private DoubleSubscriber kV = DogLog.tunable("Intake/Roller/kV", 0.0025);
-
-  // private double lastkP, lastkS, lastkV;
-
-  private DoubleSubscriber target = DogLog.tunable("Intake/Roller/Target", 0.0);
+  private RollerGoal goal = RollerGoal.STOP;
 
   public RollerSubsystem() {
     rollerMotor = new SparkMax(RollerConstants.ROLLER_MOTOR_ID, MotorType.kBrushless);
@@ -50,15 +41,15 @@ public class RollerSubsystem extends SubsystemBase {
 
     rollerController = rollerMotor.getClosedLoopController();
 
-    rollerState = RollerConstants.RollerGoal.STOP;
+    goal = RollerConstants.RollerGoal.STOP;
   }
 
-  public void setGoal(RollerGoal state) {
-    this.rollerState = state;
+  public void setGoal(RollerGoal goal) {
+    this.goal = goal;
   }
 
-  public Command rollerCommand(RollerGoal state) {
-    return Commands.run(() -> setGoal(state), this).finallyDo(() -> stop());
+  public Command rollerCommand(RollerGoal goal) {
+    return Commands.run(() -> setGoal(goal), this).finallyDo(() -> stop());
   }
 
   public void stop() {
@@ -66,34 +57,18 @@ public class RollerSubsystem extends SubsystemBase {
   }
 
   public void log() {
-    DogLog.log("Intake/Roller/Roller State", rollerState.name());
-    DogLog.log("Intake/Roller/Target Velocity", rollerState.getVelocity());
+    DogLog.log("Intake/Roller/Goal", goal.name());
+    DogLog.log("Intake/Roller/Target Velocity", goal.getVelocity());
 
     DogLog.log("Intake/Roller/Velocity", rollerMotor.getEncoder().getVelocity());
     DogLog.log("Intake/Roller/Voltage", rollerMotor.getBusVoltage());
   }
 
-  // public void updateGains() {
-  //   if (kP.get() != lastkP || kS.get() != lastkS || kV.get() != lastkV) {
-  //     SparkMaxConfig spmCFG = new SparkMaxConfig();
-
-  //     ClosedLoopConfig cfg = new ClosedLoopConfig();
-  //     cfg.p(kP.get()).feedForward.kV(kV.get()).kS(kS.get());
-
-  //     spmCFG.apply(cfg);
-
-  //     rollerMotor.configure(spmCFG, ResetMode.kResetSafeParameters,
-  // PersistMode.kPersistParameters);
-
-  //     rollerController = rollerMotor.getClosedLoopController();
-  //   }
-  // }
-
   @Override
   public void periodic() {
     log();
 
-    switch (rollerState) {
+    switch (goal) {
       case STOP:
         rollerMotor.stopMotor();
         break;
@@ -105,7 +80,7 @@ public class RollerSubsystem extends SubsystemBase {
         }
         break;
       default:
-        rollerController.setSetpoint(rollerState.getVelocity(), ControlType.kVelocity);
+        rollerController.setSetpoint(goal.getVelocity(), ControlType.kVelocity);
         break;
     }
   }

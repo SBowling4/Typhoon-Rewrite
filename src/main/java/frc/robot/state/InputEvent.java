@@ -1,4 +1,4 @@
-package frc.robot.state.inputs;
+package frc.robot.state;
 
 public enum InputEvent {
   // Face buttons

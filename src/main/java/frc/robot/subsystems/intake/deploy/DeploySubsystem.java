@@ -27,7 +27,7 @@ public class DeploySubsystem extends SubsystemBase {
   private final PIDController intakePIDController;
   private final ArmFeedforward feedforward;
 
-  private DeployGoal deployState;
+  private DeployGoal goal = DeployGoal.RETRACT;
 
   private Rotation2d deployTarget;
   private Rotation2d position;
@@ -72,31 +72,31 @@ public class DeploySubsystem extends SubsystemBase {
     feedforward = new ArmFeedforward(DeployConstants.kS, DeployConstants.kG, 0);
 
     if (encoder.get() < .2) {
-      deployState = DeployConstants.DeployGoal.RETRACT;
-      deployTarget = deployState.getPosition();
+      goal = DeployConstants.DeployGoal.RETRACT;
+      deployTarget = goal.getPosition();
 
       unwrappedEncoder = 1;
     } else {
-      deployState = DeployConstants.DeployGoal.DEPLOY;
-      deployTarget = deployState.getPosition();
+      goal = DeployConstants.DeployGoal.DEPLOY;
+      deployTarget = goal.getPosition();
     }
   }
 
-  public void setGoal(DeployGoal state) {
-    this.deployState = state;
-    this.deployTarget = state.getPosition();
+  public void setGoal(DeployGoal goal) {
+    this.goal = goal;
+    this.deployTarget = goal.getPosition();
 
-    if (state == DeployGoal.AGITATE) {
+    if (goal == DeployGoal.AGITATE) {
       agitationState = AgitationState.DOWN; // reset cycle
     }
   }
 
-  public DeployGoal getState() {
-    return deployState;
+  public DeployGoal getGoal() {
+    return goal;
   }
 
-  public Command deployCommand(DeployGoal state) {
-    return Commands.run(() -> setGoal(state), this);
+  public Command deployCommand(DeployGoal goal) {
+    return Commands.run(() -> setGoal(goal), this);
   }
 
   private enum AgitationState {
@@ -201,7 +201,7 @@ public class DeploySubsystem extends SubsystemBase {
 
   public void log() {
     DogLog.log("Intake/Deploy/Position", getPosition().getDegrees(), Degrees);
-    DogLog.log("Intake/Deploy/Deploy State", deployState.name());
+    DogLog.log("Intake/Deploy/Deploy Goal", goal.name());
     DogLog.log("Intake/Deploy/Target", deployTarget.getDegrees(), Degrees);
     DogLog.log("Intake/Deploy/Raw Encoder", encoder.get());
   }
@@ -225,12 +225,12 @@ public class DeploySubsystem extends SubsystemBase {
 
     log();
 
-    switch (deployState) {
+    switch (goal) {
       case AGITATE:
         agitate();
         break;
       default:
-        setPosition(deployState.getPosition());
+        setPosition(goal.getPosition());
         break;
     }
 

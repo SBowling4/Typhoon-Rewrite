@@ -10,7 +10,6 @@ import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 import dev.doglog.DogLog;
-import edu.wpi.first.networktables.DoubleSubscriber;
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
@@ -23,15 +22,10 @@ public class FlywheelSubsystem extends SubsystemBase {
   private final TalonFX rightMotor;
   private final TalonFX leftMotor;
 
-  // private final TunablePIDF frontTunablePIDF;
-  // private final TunablePIDF backTunablePIDF;
-
-  private final DoubleSubscriber velocityTarget = DogLog.tunable("Flywheel/VelocityTarget", 0.0);
-
   private AngularVelocity frontTargetVelocity = RotationsPerSecond.of(0);
   private AngularVelocity backTargetVelocity = RotationsPerSecond.of(0);
 
-  private FlywheelGoal flywheelState = FlywheelGoal.IDLE;
+  private FlywheelGoal goal = FlywheelGoal.IDLE;
 
   public FlywheelSubsystem() {
     rightMotor = new TalonFX(FlywheelConstants.RIGHT_FLYWHEEL_ID);
@@ -93,8 +87,8 @@ public class FlywheelSubsystem extends SubsystemBase {
         this);
   }
 
-  public void setGoal(FlywheelGoal state) {
-    this.flywheelState = state;
+  public void setGoal(FlywheelGoal goal) {
+    this.goal = goal;
   }
 
   public void setVelocity(AngularVelocity velocity) {
@@ -177,7 +171,7 @@ public class FlywheelSubsystem extends SubsystemBase {
     //   stop();
     // }
 
-    switch (flywheelState) {
+    switch (goal) {
       case PASSING:
         ShotParameters passingParams = ShotCalculator.getInstance().calculateParameters();
 

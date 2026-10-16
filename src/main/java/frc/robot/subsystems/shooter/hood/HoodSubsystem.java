@@ -4,15 +4,11 @@ import static edu.wpi.first.units.Units.Degrees;
 import static edu.wpi.first.units.Units.Rotations;
 import static edu.wpi.first.units.Units.Volts;
 
-import com.ctre.phoenix6.configs.CANcoderConfiguration;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.PositionVoltage;
-import com.ctre.phoenix6.hardware.CANcoder;
 import com.ctre.phoenix6.hardware.TalonFX;
-import com.ctre.phoenix6.signals.SensorDirectionValue;
 import dev.doglog.DogLog;
 import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.networktables.DoubleSubscriber;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
@@ -26,19 +22,13 @@ import frc.robot.subsystems.shooter.hood.HoodConstants.HoodGoal;
 
 public class HoodSubsystem extends SubsystemBase {
   private final TalonFX hoodMotor;
-  private final CANcoder hoodEncoder;
-
-  private final DoubleSubscriber tuningTarget = DogLog.tunable("Hood/TuningTarget", 0.0);
-
-  // private final TunablePIDF tunablePIDF;
 
   private Rotation2d position;
 
-  private HoodGoal hoodState = HoodGoal.NEUTRAL;
+  private HoodGoal goal = HoodGoal.NEUTRAL;
 
   public HoodSubsystem() {
     hoodMotor = new TalonFX(HoodConstants.HOOD_MOTOR_ID);
-    hoodEncoder = new CANcoder(HoodConstants.HOOD_ENCODER_ID);
 
     TalonFXConfiguration cfg = new TalonFXConfiguration();
 
@@ -54,18 +44,6 @@ public class HoodSubsystem extends SubsystemBase {
     cfg.Slot0.kS = HoodConstants.kS;
 
     hoodMotor.getConfigurator().apply(cfg);
-
-    CANcoderConfiguration encoderConfig = new CANcoderConfiguration();
-
-    encoderConfig.MagnetSensor.SensorDirection = SensorDirectionValue.Clockwise_Positive;
-    encoderConfig.MagnetSensor.MagnetOffset = -.262;
-
-    hoodEncoder.getConfigurator().apply(encoderConfig);
-
-    lastEncoderRaw = 0;
-    unwrappedEncoder = 0;
-
-    // tunablePIDF = new TunablePIDF("Hood");
 
     hoodMotor.setPosition(Rotations.of(0));
   }
@@ -87,42 +65,16 @@ public class HoodSubsystem extends SubsystemBase {
     return position;
   }
 
-  private double lastEncoderRaw = 0.0;
-  private double unwrappedEncoder = 0.0;
-
-  public Rotation2d getEncoderPosition() {
-    double raw = hoodEncoder.getPosition().getValueAsDouble();
-
-    double delta = raw - lastEncoderRaw;
-
-    if (delta > 0.5) { // jumped from 1 -> 0
-      delta -= 1.0;
-    } else if (delta < -0.5) { // jumped from 0 -> 1
-      delta += 1.0;
-    }
-
-    unwrappedEncoder += delta;
-    lastEncoderRaw = raw;
-
-    double rotations = unwrappedEncoder / HoodConstants.GEAR_RATIO_ENCODER;
-
-    return Rotation2d.fromRotations(rotations);
-  }
-
-  public void seedMotorFromAbsolute() {
-    hoodMotor.setPosition(getEncoderPosition().getRotations());
-  }
-
   public Command applyVoltageCommand(double volts) {
     return Commands.run(() -> hoodMotor.setVoltage(volts), this).finallyDo(() -> stop());
   }
 
-  public void setGoal(HoodGoal state) {
-    this.hoodState = state;
+  public void setGoal(HoodGoal goal) {
+    this.goal = goal;
   }
 
   public void log() {
-    DogLog.log("Hood/State", hoodState);
+    DogLog.log("Hood/Goal", goal);
     DogLog.log("Hood/Position", getMotorPosition().getDegrees(), Degrees);
     DogLog.log("Hood/Volts", hoodMotor.getMotorVoltage().getValueAsDouble(), Volts);
   }
@@ -152,36 +104,13 @@ public class HoodSubsystem extends SubsystemBase {
             }));
   }
 
-  // public void updateGains() {
-  //   TunablePIDFGains gains = tunablePIDF.getGains();
-
-  //   if (gains.hasChanged()) {
-  //     Slot0Configs slot0Configs = new Slot0Configs();
-  //     slot0Configs.kP = gains.kP();
-  //     slot0Configs.kD = gains.kD();
-  //     slot0Configs.kS = gains.kS();
-
-  //     slot0Configs.StaticFeedforwardSign = StaticFeedforwardSignValue.UseClosedLoopSign;
-
-  //     hoodMotor.getConfigurator().apply(slot0Configs);
-  //     return;
-  //   }
-  // }
-
   @Override
   public void periodic() {
     log();
-    // updateGains();
 
     if (zeroing) return;
 
-    // if (tuningTarget.get() != 0) {
-    //   setPosition(Rotation2d.fromDegrees(tuningTarget.get()));
-    // } else {
-    //   stop();
-    // }
-
-    switch (hoodState) {
+    switch (goal) {
       case PASSING:
         ShotParameters passingParams = ShotCalculator.getInstance().calculateParameters();
 

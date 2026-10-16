@@ -4,8 +4,8 @@ import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import frc.robot.RobotContainer;
-import frc.robot.state.inputs.InputEvent;
 import frc.robot.state.override.OverrideState;
+import frc.robot.state.standard.Neutral;
 import frc.robot.state.standard.Pass;
 import frc.robot.state.standard.Score;
 import frc.robot.subsystems.shooter.ShotCalculator;
@@ -15,7 +15,7 @@ import java.util.Optional;
 
 public class StateMachine {
 
-  private State currentState;
+  private State currentState = new Neutral();
   private boolean overrideActive = false;
 
   private boolean flywheelSpunUp = false;
