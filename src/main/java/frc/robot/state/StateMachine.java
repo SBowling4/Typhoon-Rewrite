@@ -15,35 +15,29 @@ import java.util.Optional;
 public class StateMachine {
 
   private State currentState;
-  private boolean overrideActive = false;
 
   private boolean flywheelSpunUp = false;
 
   private static StateMachine instance;
 
+   private OverrideState currentOverride = null;
+
   public void applyInput(InputEvent event) {
-    if (OverrideState.overrideInputs.containsKey(event) || overrideActive) {
-      overrideActive = true;
-      OverrideState overrideState = OverrideState.overrideInputs.get(event);
+    OverrideState incoming = OverrideState.overrideInputs.get(event);
+    if (incoming != null && incoming != currentOverride) {
+      currentOverride = incoming;
+      currentOverride.enter();
+    }
 
-      // This happens when pressing a button while the override state is still happening
-      // So we just ignore it and let the override state finish
-      if (overrideState == null) {
+    if (currentOverride != null) {
+      if (currentOverride.applyInput(event) != null) {
         return;
       }
-
-      overrideState.enter();
-
-      if (overrideState.applyInput(event) != null) {
-        return;
-      } else {
-        currentState.enter();
-        overrideActive = false;
-      }
+      currentOverride = null;
+      currentState.enter(); // restore the underlying state's goals
     }
 
     State nextState = currentState.applyInput(event);
-
     if (nextState != currentState) {
       setState(nextState);
     }
@@ -56,7 +50,10 @@ public class StateMachine {
   public void setState(State state) {
     flywheelSpunUp = false;
 
-    currentState.exit();
+    if (currentState != null) {
+      currentState.exit();
+    }
+
     currentState = state;
     currentState.enter();
   }

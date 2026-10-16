@@ -28,7 +28,7 @@ public class Score implements State {
   public State applyInput(InputEvent event) {
     switch (event) {
       case R2_RELEASED:
-        return RobotContainer.getDeploySubsystem().getGoal() == DeployGoal.DEPLOY
+        return deploySubsystem.getGoal() == DeployGoal.DEPLOY
             ? new Intake()
             : new Neutral();
       default:

@@ -30,7 +30,7 @@ public class Intake implements State {
   @Override
   public State applyInput(InputEvent event) {
     switch (event) {
-      case L2_PRESSED:
+      case R2_PRESSED:
         return StateMachine.scoreOrPass();
       case L1_PRESSED:
         return new Neutral();

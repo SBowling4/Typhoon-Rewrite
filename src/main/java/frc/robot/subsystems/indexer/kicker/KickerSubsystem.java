@@ -94,7 +94,7 @@ public class KickerSubsystem extends SubsystemBase {
       StateMachine.getInstance().applyInput(InputEvent.JAM_DETECTED);
     }
 
-    DogLog.log("Spindexer/Unjam Active", unjamming);
+    DogLog.log("Kicker/Unjam Active", unjamming);
   }
 
   public void stop() {
