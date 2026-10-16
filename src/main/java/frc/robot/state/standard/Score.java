@@ -1,6 +1,5 @@
 package frc.robot.state.standard;
 
-import frc.robot.RobotContainer;
 import frc.robot.state.InputEvent;
 import frc.robot.state.State;
 import frc.robot.subsystems.indexer.kicker.KickerConstants.KickerGoal;
@@ -28,9 +27,7 @@ public class Score implements State {
   public State applyInput(InputEvent event) {
     switch (event) {
       case R2_RELEASED:
-        return deploySubsystem.getGoal() == DeployGoal.DEPLOY
-            ? new Intake()
-            : new Neutral();
+        return deploySubsystem.getGoal() == DeployGoal.DEPLOY ? new Intake() : new Neutral();
       default:
         return this;
     }

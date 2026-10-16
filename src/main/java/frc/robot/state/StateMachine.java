@@ -20,7 +20,7 @@ public class StateMachine {
 
   private static StateMachine instance;
 
-   private OverrideState currentOverride = null;
+  private OverrideState currentOverride = null;
 
   public void applyInput(InputEvent event) {
     OverrideState incoming = OverrideState.overrideInputs.get(event);
