@@ -100,13 +100,23 @@ public class RobotContainer {
                         .withVelocityY(-driverController.getLeftX() * MaxSpeed)
                         .withRotationalRate(-driverController.getRightX() * MaxAngularRate)));
 
-    driverController.R2().onTrue(StateMachine.getInstance().applyInputCommand(InputEvent.R2_PRESSED));
-    driverController.R2().onFalse(StateMachine.getInstance().applyInputCommand(InputEvent.R2_RELEASED));
+    driverController
+        .R2()
+        .onTrue(StateMachine.getInstance().applyInputCommand(InputEvent.R2_PRESSED));
+    driverController
+        .R2()
+        .onFalse(StateMachine.getInstance().applyInputCommand(InputEvent.R2_RELEASED));
 
-    driverController.L1().onTrue(StateMachine.getInstance().applyInputCommand(InputEvent.L1_PRESSED));
+    driverController
+        .L1()
+        .onTrue(StateMachine.getInstance().applyInputCommand(InputEvent.L1_PRESSED));
 
-    driverController.cross().onTrue(StateMachine.getInstance().applyInputCommand(InputEvent.CROSS_PRESSED));
-    driverController.cross().onFalse(StateMachine.getInstance().applyInputCommand(InputEvent.CROSS_RELEASED));
+    driverController
+        .cross()
+        .onTrue(StateMachine.getInstance().applyInputCommand(InputEvent.CROSS_PRESSED));
+    driverController
+        .cross()
+        .onFalse(StateMachine.getInstance().applyInputCommand(InputEvent.CROSS_RELEASED));
 
     driverController.povDown().onTrue(hoodSubsystem.zero());
 

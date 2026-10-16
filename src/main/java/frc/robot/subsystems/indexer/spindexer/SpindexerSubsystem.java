@@ -70,7 +70,7 @@ public class SpindexerSubsystem extends SubsystemBase {
     return spinMotor.getOutputCurrent() > 38.0;
   }
 
-    /** Fires JAM_DETECTED / UNJAM_FINISHED into the state machine. Call once per loop. */
+  /** Fires JAM_DETECTED / UNJAM_FINISHED into the state machine. Call once per loop. */
   private void updateUnjam() {
     double now = Timer.getFPGATimestamp();
 

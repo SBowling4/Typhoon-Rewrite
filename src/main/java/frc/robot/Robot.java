@@ -17,6 +17,8 @@ import edu.wpi.first.wpilibj.Watchdog;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
+import frc.robot.state.StateMachine;
+import frc.robot.state.standard.Neutral;
 import frc.robot.subsystems.shooter.ShotCalculator;
 import frc.robot.util.HubStateUtil;
 import java.lang.reflect.Field;
@@ -32,6 +34,8 @@ public class Robot extends TimedRobot {
 
   public Robot() {
     // Adjust loop overrun warning timeout
+    // Prevents the robot from spamming the console with warnings if the loop takes longer than 20ms
+    // Taken from 6328
     try {
       Field watchdogField = IterativeRobotBase.class.getDeclaredField("m_watchdog");
       watchdogField.setAccessible(true);
@@ -43,6 +47,8 @@ public class Robot extends TimedRobot {
     CommandScheduler.getInstance().setPeriod(0.2);
 
     m_robotContainer = new RobotContainer();
+
+    StateMachine.getInstance().setState(new Neutral());
   }
 
   @Override

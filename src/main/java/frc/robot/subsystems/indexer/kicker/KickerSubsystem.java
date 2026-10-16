@@ -75,7 +75,7 @@ public class KickerSubsystem extends SubsystemBase {
     return kickerMotor.getStatorCurrent().getValueAsDouble() > KickerConstants.JAM_CURRENT.in(Amps);
   }
 
-    /** Fires JAM_DETECTED / UNJAM_FINISHED into the state machine. Call once per loop. */
+  /** Fires JAM_DETECTED / UNJAM_FINISHED into the state machine. Call once per loop. */
   private void updateUnjam() {
     double now = Timer.getFPGATimestamp();
 
